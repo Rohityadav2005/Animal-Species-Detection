@@ -33,6 +33,33 @@ def crop_it(image,bbox):
     return crop_rgb
 
 def resize(cropped_img):
+    h, w = cropped_img.shape[:2]
+
+    target_size = 384
+
+    scale = target_size / max(h, w)
+    new_w, new_h = int(round(w * scale)), int(round(h * scale))
+
+    resized_img = cv2.resize(cropped_img, (new_w, new_h), interpolation=cv2.INTER_AREA if scale < 1 else cv2.INTER_LINEAR)
+
+    pad_w = target_size - new_w
+    pad_h = target_size - new_h
+
+    top = pad_h // 2
+    bottom = pad_h - top
+    left = pad_w // 2
+    right = pad_w - left
+
+    resized_img = cv2.copyMakeBorder(
+        src=resized_img,
+        top=top,
+        bottom=bottom,
+        left=left,
+        right=right,
+        borderType=cv2.BORDER_CONSTANT,
+        value=(128, 128, 128)
+    )
+
     return resized_img
 
 def save_it(resized_img,img_path):
