@@ -1,5 +1,9 @@
 import cv2
 import os
+import torch
+import numpy as np 
+from sklearn.metrics import f1_score
+from tqdm.auto import tqdm
 
 
 
@@ -62,8 +66,7 @@ def resize(cropped_img):
 
     return resized_img
 
-def save_it(resized_img,img_path):
-    crp_root = r"C:\Users\Rahul Yadav\Desktop\cropped_img\train"
+def save_it(resized_img,img_path,crp_root):
     rm = img_path.split('\\')[6]
     rm1 = img_path.split('\\')[7]
     path = os.path.join(crp_root,rm)
@@ -71,6 +74,30 @@ def save_it(resized_img,img_path):
     os.makedirs(path,exist_ok=True)
     cv2.imwrite(i_path,resized_img)
 
+def run_epoch(model,criterion,device,loader,train = False,scaler = None,optimizer = None):
+    model.train(train)
+    total_loss,preds,tures = 0,[],[]
+    with torch.set_grad_enabled(train):
+        for x,y in tqdm(loader,desc = 'Training' if train else 'Validating'):
+            x,y = x.to(device, non_blocking = True),y.to(device, non_blocking = True)
+            with torch.autocast(device_type='cuda',enabled=(device == 'cuda')):
+                out = model(x)
+                loss = criterion(out,y)
+            if train:
+                optimizer.zero_grad()
+                scaler.scale(loss).backward()
+                scaler.step(optimizer)
+                scaler.update()
+            total_loss += loss.item() * x.size(0)
+            preds += out.argmax(1).cpu().tolist()
+            trues += y.cpu().tolist()
+    return (total_loss/len(loader.dataset),
+            (np.array(preds) == np.array(trues)).mean(),
+            f1_score(tures,preds,average='macro')
+    )
+
+
+        
 
 
 
